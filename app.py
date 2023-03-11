@@ -4,6 +4,8 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify, render_template, Response, make_response
 import json
+import io
+import xlsxwriter
 
 nltk.download('punkt')
 
@@ -46,18 +48,32 @@ def export():
     print(export_format)
 
     if export_format == 'csv':
-        excel_file = df.to_excel('scraped_data.xlsx', index=False)
+        sentences = []
+        for text in df['page_text']:
+            sentences.extend(nltk.sent_tokenize(text))
 
-        with open('scraped_data.xlsx', 'rb') as file:
-            file_content = file.read()
+        data = [{'id': i, 'text': sentence} for i, sentence in enumerate(sentences, 1)]
 
-        response = Response(file_content, mimetype='application/vnd.ms-excel')
-        response.headers.set('Content-Disposition', 'attachment', filename='scraped_data.xlsx')
+        new_df = pd.DataFrame(columns=['id', 'text'])
+
+        for d in data:
+            new_df = new_df.append(d, ignore_index=True)
+
+        # Write DataFrame
+        output = io.BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        new_df.to_excel(writer, index=False)
+        writer.save()
+        output.seek(0)
+
+        response = make_response(output.getvalue())
+        response.headers['Content-Disposition'] = 'attachment; filename=data.xlsx'
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
         return response
 
     elif export_format == 'txt':
-        txt_file = df.to_csv('scraped_data.txt', sep='\t', index=False)
+        df.to_csv('scraped_data.txt', sep='\t', index=False)
 
         with open('scraped_data.txt', 'rb') as file:
             file_content = file.read()
@@ -68,14 +84,17 @@ def export():
         return response
 
     elif export_format == 'json':
-        json_file = df.to_json('scraped_data.json', orient='split')
+        sentences = []
+        for text in df['page_text']:
+            sentences.extend(nltk.sent_tokenize(text))
 
-        with open('scraped_data.json', 'r') as file:
-            file_content = file.read()
+        data = [{'id': i, 'text': sentence} for i, sentence in enumerate(sentences, 1)]
 
-        response = Response(file_content, mimetype='application/json')
-        response.headers.set('Content-Disposition', 'attachment', filename='scraped_data.json')
+        json_data = json.dumps(data)
 
+        response = make_response(json_data)
+        response.headers['Content-Disposition'] = 'attachment; filename=data.json'
+        response.headers['Content-Type'] = 'application/json'
         return response
 
     else:
@@ -90,7 +109,6 @@ def upload():
     for text in df['page_text']:
         sentences.extend(nltk.sent_tokenize(text))
 
-    print(sentences)
     data = [{'id': i, 'text': sentence} for i, sentence in enumerate(sentences, 1)]
 
     json_data = json.dumps(data)
