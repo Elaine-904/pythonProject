@@ -2,8 +2,9 @@
 <html>
 <head>
     <title>Website Scraper</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
   <a id="url-anchor" href="#url">Scrape Website</a> | <a id="import-anchor" href="#file-input" onclick="page_scroll(event)">Import Excel file</a>
@@ -20,9 +21,12 @@
     <button onclick="exportData('json')">Export to JSON</button>
     <button onclick="exportData('txt')">Export to Text</button>
     <hr>
-    <h1>02 Excel Import </h1>
-    <label for="file-input">Import Excel file:</label>
-    <input id="file-input" type="file" accept=".xlsx, .xls, .csv">
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+        <h1>02 Excel Import </h1>
+        <label for="file-input">Import Excel file:</label>
+        <input id="file-input" type="file" accept=".xlsx, .xls, .csv" name="file">
+        <button type="submit">Export to JSON</button>
+    </form>
     <hr>
 
     <script>
@@ -37,6 +41,8 @@
         });
     }
 
+
+  let scrapedData = null;
   function scrape() {
     const url = document.getElementById("url").value;
 
@@ -65,6 +71,7 @@
         `;
         document.getElementById("scraped-data").innerHTML = "";
         document.getElementById("scraped-data").appendChild(container);
+
         scrapedData = [
             { title: data.title, description: data.title, page_text: data.page_text }
         ];
@@ -76,92 +83,29 @@
       });
   }
 
-   function convertToCSV(data) {
-      const separator = ",";
-      const keys = Object.keys(data[0]);
-      const csv = [
-        keys.join(separator),
-        ...data.map(row => keys.map(key => row[key]).join(separator))
-      ].join("\n");
-      return csv;
+      function exportData(type) {
+          fetch('/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, data: scrapedData,format:type })
+          })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Network response was not ok');
+              }
+              return response.blob();
+            })
+            .then(blob => {
+              const a = document.createElement('a');
+              const url = window.URL.createObjectURL(blob);
+              a.href = url;
+              a.download = `scraped_data.${type}`;
+              a.click();
+              window.URL.revokeObjectURL(url);
+            })
+            .catch(error => console.error(error));
     }
 
-   function convertToTXT(data) {
-      const keys = Object.keys(data[0]);
-      const txt = data.map(row => keys.map(key => row[key]).join("\t")).join("\n");
-      return txt;
-    }
-
-    function exportJSON(data) {
-      const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", "imported_data.json");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-
-
-  function downloadFile(data, type, filename) {
-      const blob = new Blob([data], {type: type});
-      const url = URL.createObjectURL(blob);
-      console.log(url);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-}
-
-     function exportData(format) {
-        if (scrapedData) {
-          let data = null;
-          let filename = "scraped_data";
-          let mimeType = null;
-
-          if (format === 'csv') {
-            data = convertToCSV(scrapedData);
-            filename += ".csv";
-            mimeType = "text/csv";
-          } else if (format === 'json') {
-            data = JSON.stringify(scrapedData, null, 2);
-            filename += ".json";
-            mimeType = "application/json";
-          } else if (format === 'txt') {
-            data = convertToTXT(scrapedData);
-            filename += ".txt";
-            mimeType = "text/plain";
-          }
-
-          if (data) {
-            downloadFile(data, mimeType, filename);
-          }
-        }
-  }
-
-    const fileInput = document.getElementById("file-input");
-    fileInput.addEventListener("change", handleFileSelect);
-    function handleFileSelect(event) {
-      const file = event.target.files[0];
-      const reader = new FileReader();
-
-      reader.onload = function(event) {
-        const data = event.target.result;
-        const workbook = XLSX.read(data, {type: "binary"});
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(sheet);
-
-        exportJSON(json);
-      };
-
-      reader.readAsBinaryString(file);
-    }
 
 </script>
 
