@@ -105,18 +105,17 @@ def export():
 def upload():
     file = request.files['file']
     df = pd.read_excel(file)
-    sentences = []
-    for text in df['page_text']:
-        sentences.extend(nltk.sent_tokenize(text))
+    data = []
+    for i, row in df.iterrows():
+        data.append({'id': row['id'], 'text': row['text']})
 
-    data = [{'id': i, 'text': sentence} for i, sentence in enumerate(sentences, 1)]
-
+    # Convert the list of dictionaries to JSON format
     json_data = json.dumps(data)
 
+    # Create a response with the JSON data and appropriate headers
     response = make_response(json_data)
     response.headers['Content-Disposition'] = 'attachment; filename=data.json'
     response.headers['Content-Type'] = 'application/json'
-
     return response
 
 
