@@ -22,13 +22,19 @@ def scrape():
     url = request.json['url']
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
-    title = soup.find('title').get_text()
+
+    title_element = soup.find('title')
+    if title_element is not None:
+        site_title = title_element.get_text()
+    else:
+        site_title = None
 
     description = soup.find('meta', attrs={'name': 'description'})
     if description is not None:
         site_describe = description['content']
     else:
         site_describe = None
+
     scrape_text = soup.get_text()
     lines = [line.strip()
              for line in scrape_text.split('\n')]
@@ -37,7 +43,7 @@ def scrape():
         (line for line in lines
          if len(line) > 20)
     print(page_text)
-    return jsonify({'title': title, 'description': site_describe, 'page_text': page_text})
+    return jsonify({'title': site_title, 'description': site_describe, 'page_text': page_text})
 
 
 @app.route('/export', methods=['POST'])
