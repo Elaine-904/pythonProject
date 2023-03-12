@@ -4,6 +4,11 @@ Web scrape & data convert
 -   Backend application built with Python and Flask framework. 
 -   The purpose of this application is to scrape data from a user-provided URL and export the data to a CSV, JSON, or TXT file. Additionally, the application allows the user to import their Excel file and automatically convert it to a JSON file.
 
+Design Sketch
+-------------
+![Screenshot 2023-03-12 172902](https://user-images.githubusercontent.com/79605610/224524443-abf529ee-6211-40f3-87c7-0f7bfe1820c0.png)
+
+
 Prerequisites
 -------------
 
